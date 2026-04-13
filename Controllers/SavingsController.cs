@@ -77,9 +77,13 @@ public class SavingsController : Controller
                 DepositCeiling = account.DepositCeiling
             });
         }
-        catch (InvalidOperationException ex)
+        catch (InvalidOperationException ex) when (ex.Message.Contains("not found"))
         {
             return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (ArgumentException ex)
         {
