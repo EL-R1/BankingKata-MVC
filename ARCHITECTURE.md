@@ -40,12 +40,19 @@ graph TD
     AC --> TR
     SC --> SR
 
-    style HTTP fill:#f9f,stroke:#333
-    style AC fill:#bbf,stroke:#333
-    style SC fill:#bbf,stroke:#333
-    style BA fill:#dfd,stroke:#333
-    style SA fill:#dfd,stroke:#333
-    style T fill:#dfd,stroke:#333
+    style HTTP fill:#e8f4f8,stroke:#333,color:#000000
+    style AC fill:#d4e8f4,stroke:#333,color:#000000
+    style SC fill:#d4e8f4,stroke:#333,color:#000000
+    style AV fill:#e4d4f4,stroke:#333,color:#000000
+    style SV fill:#e4d4f4,stroke:#333,color:#000000
+    style OV fill:#e4d4f4,stroke:#333,color:#000000
+    style StV fill:#e4d4f4,stroke:#333,color:#000000
+    style BA fill:#e8f4d4,stroke:#333,color:#000000
+    style SA fill:#e8f4d4,stroke:#333,color:#000000
+    style T fill:#e8f4d4,stroke:#333,color:#000000
+    style BR fill:#d4f4e8,stroke:#333,color:#000000
+    style SR fill:#d4f4e8,stroke:#333,color:#000000
+    style TR fill:#d4f4e8,stroke:#333,color:#000000
 ```
 
 ### Flux de données
@@ -55,3 +62,17 @@ graph TD
 3. **Controller** → Model/Repository (logique métier + données)
 4. **Model** → Repository (persistance in-memory)
 5. **ViewModel** → Réponse JSON
+
+### Structure du projet
+
+```
+BankingKata-MVC/
+├── Controllers/      # Endpoints API
+│   ├── AccountsController.cs
+│   └── SavingsController.cs
+├── ViewModels/       # Modèles de réponse
+├── Models/           # Entités + Repositories
+│   ├── AccountModels.cs
+│   └── Repositories.cs
+└── Program.cs        # Configuration
+```
