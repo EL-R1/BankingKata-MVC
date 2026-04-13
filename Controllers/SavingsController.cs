@@ -4,6 +4,8 @@ using BankingKata_MVC.ViewModels;
 
 namespace BankingKata_MVC.Controllers;
 
+[ApiController]
+[Route("api/[controller]")]
 public class SavingsController : Controller
 {
     private readonly SavingsAccountRepository _repository = new();
