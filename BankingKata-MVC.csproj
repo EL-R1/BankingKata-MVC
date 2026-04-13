@@ -10,4 +10,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="BankingKata-MVC.Tests\**" />
+    <Content Remove="BankingKata-MVC.Tests\**" />
+    <EmbeddedResource Remove="BankingKata-MVC.Tests\**" />
+    <None Remove="BankingKata-MVC.Tests\**" />
+  </ItemGroup>
+
 </Project>
