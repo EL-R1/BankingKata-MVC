@@ -24,8 +24,11 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --verbosity quiet
     
+    - name: Restore tests
+      run: dotnet restore BankingKata-MVC.Tests/BankingKata-MVC.Tests.csproj
+    
     - name: Build tests
       run: dotnet build BankingKata-MVC.Tests/BankingKata-MVC.Tests.csproj --no-restore --verbosity quiet
     
     - name: Run tests
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test BankingKata-MVC.Tests/BankingKata-MVC.Tests.csproj --no-build --verbosity normal
