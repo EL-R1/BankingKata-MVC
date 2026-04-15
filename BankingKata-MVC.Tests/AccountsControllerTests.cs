@@ -1,5 +1,11 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Moq;
 using BankingKata_MVC.Controllers;
+using BankingKata_MVC.Mapping;
+using BankingKata_MVC.Models;
+using BankingKata_MVC.Models.Interfaces;
 using BankingKata_MVC.ViewModels;
 using Xunit;
 
@@ -7,16 +13,33 @@ namespace BankingKata_MVC.Tests;
 
 public class AccountsControllerTests
 {
+    private readonly Mock<IBankAccountRepository> _mockRepository;
+    private readonly Mock<ITransactionRepository> _mockTransactionRepository;
+    private readonly IMapper _mapper;
+    private readonly Mock<ILogger<AccountsController>> _mockLogger;
     private readonly AccountsController _controller;
 
     public AccountsControllerTests()
     {
-        _controller = new AccountsController();
+        _mockRepository = new Mock<IBankAccountRepository>();
+        _mockTransactionRepository = new Mock<ITransactionRepository>();
+        _mockLogger = new Mock<ILogger<AccountsController>>();
+        
+        var config = new MapperConfiguration(cfg => cfg.AddProfile<AccountMappingProfile>());
+        _mapper = config.CreateMapper();
+
+        _controller = new AccountsController(
+            _mockRepository.Object,
+            _mockTransactionRepository.Object,
+            _mapper,
+            _mockLogger.Object);
     }
 
     [Fact]
     public void GetAll_ReturnsEmptyList_WhenNoAccounts()
     {
+        _mockRepository.Setup(r => r.GetAll()).Returns(new List<BankAccount>());
+
         var result = _controller.GetAll();
         
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
@@ -33,6 +56,9 @@ public class AccountsControllerTests
             InitialBalance = 1000,
             OverdraftLimit = 500
         };
+
+        _mockRepository.Setup(r => r.Exists(model.AccountNumber)).Returns(false);
+        _mockRepository.Setup(r => r.Save(It.IsAny<BankAccount>()));
 
         var result = _controller.Create(model);
 
@@ -52,7 +78,8 @@ public class AccountsControllerTests
             InitialBalance = 1000
         };
 
-        _controller.Create(model);
+        _mockRepository.Setup(r => r.Exists(model.AccountNumber)).Returns(true);
+
         var result = _controller.Create(model);
 
         Assert.IsType<ConflictObjectResult>(result.Result);
@@ -61,18 +88,21 @@ public class AccountsControllerTests
     [Fact]
     public void Get_ExistingAccount_ReturnsAccount()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 500 });
+        var account = new BankAccount("ACC001", 500);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
 
         var result = _controller.Get("ACC001");
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var account = Assert.IsType<AccountViewModel>(okResult.Value);
-        Assert.Equal("ACC001", account.AccountNumber);
+        var returnedAccount = Assert.IsType<AccountViewModel>(okResult.Value);
+        Assert.Equal("ACC001", returnedAccount.AccountNumber);
     }
 
     [Fact]
     public void Get_NonExistingAccount_ReturnsNotFound()
     {
+        _mockRepository.Setup(r => r.GetByAccountNumber("NONEXISTENT")).Returns((BankAccount?)null);
+
         var result = _controller.Get("NONEXISTENT");
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -81,18 +111,23 @@ public class AccountsControllerTests
     [Fact]
     public void Deposit_ValidAmount_IncreasesBalance()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 100 });
+        var account = new BankAccount("ACC001", 100);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
+        _mockRepository.Setup(r => r.Update(It.IsAny<BankAccount>()));
+        _mockTransactionRepository.Setup(r => r.Save(It.IsAny<Transaction>()));
 
         var result = _controller.Deposit("ACC001", new TransactionViewModel { Amount = 50 });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var account = Assert.IsType<AccountViewModel>(okResult.Value);
-        Assert.Equal(150, account.Balance);
+        var updatedAccount = Assert.IsType<AccountViewModel>(okResult.Value);
+        Assert.Equal(150, updatedAccount.Balance);
     }
 
     [Fact]
     public void Deposit_NonExistingAccount_ReturnsNotFound()
     {
+        _mockRepository.Setup(r => r.GetByAccountNumber("NONEXISTENT")).Returns((BankAccount?)null);
+
         var result = _controller.Deposit("NONEXISTENT", new TransactionViewModel { Amount = 50 });
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
@@ -101,19 +136,23 @@ public class AccountsControllerTests
     [Fact]
     public void Withdraw_ValidAmount_DecreasesBalance()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 100 });
+        var account = new BankAccount("ACC001", 100);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
+        _mockRepository.Setup(r => r.Update(It.IsAny<BankAccount>()));
+        _mockTransactionRepository.Setup(r => r.Save(It.IsAny<Transaction>()));
 
         var result = _controller.Withdraw("ACC001", new TransactionViewModel { Amount = 30 });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var account = Assert.IsType<AccountViewModel>(okResult.Value);
-        Assert.Equal(70, account.Balance);
+        var updatedAccount = Assert.IsType<AccountViewModel>(okResult.Value);
+        Assert.Equal(70, updatedAccount.Balance);
     }
 
     [Fact]
     public void Withdraw_InsufficientFunds_ReturnsBadRequest()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 100, OverdraftLimit = 0 });
+        var account = new BankAccount("ACC001", 100);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
 
         var result = _controller.Withdraw("ACC001", new TransactionViewModel { Amount = 150 });
 
@@ -123,20 +162,25 @@ public class AccountsControllerTests
     [Fact]
     public void SetOverdraft_ValidLimit_UpdatesOverdraft()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 100, OverdraftLimit = 0 });
+        var account = new BankAccount("ACC001", 100);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
+        _mockRepository.Setup(r => r.Update(It.IsAny<BankAccount>()));
 
         var result = _controller.SetOverdraft("ACC001", new OverdraftViewModel { OverdraftLimit = 200 });
 
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        var account = Assert.IsType<AccountViewModel>(okResult.Value);
-        Assert.Equal(200, account.OverdraftLimit);
+        var updatedAccount = Assert.IsType<AccountViewModel>(okResult.Value);
+        Assert.Equal(200, updatedAccount.OverdraftLimit);
     }
 
     [Fact]
     public void GetStatement_ExistingAccount_ReturnsStatement()
     {
-        _controller.Create(new CreateAccountViewModel { AccountNumber = "ACC001", InitialBalance = 100 });
-        _controller.Deposit("ACC001", new TransactionViewModel { Amount = 50 });
+        var account = new BankAccount("ACC001", 150);
+        _mockRepository.Setup(r => r.GetByAccountNumber("ACC001")).Returns(account);
+        _mockTransactionRepository
+            .Setup(r => r.GetByAccountNumberInRange("ACC001", It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            .Returns(new List<Transaction>());
 
         var result = _controller.GetStatement("ACC001", null, null);
 

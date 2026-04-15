@@ -1,8 +1,11 @@
+using System.Collections.Concurrent;
+using BankingKata_MVC.Models.Interfaces;
+
 namespace BankingKata_MVC.Models;
 
-public class BankAccountRepository
+public class BankAccountRepository : IBankAccountRepository
 {
-    private readonly Dictionary<string, BankAccount> _accounts = new();
+    private readonly ConcurrentDictionary<string, BankAccount> _accounts = new();
 
     public bool Exists(string accountNumber) => _accounts.ContainsKey(accountNumber);
 
@@ -25,26 +28,34 @@ public class BankAccountRepository
     }
 }
 
-public class TransactionRepository
+public class TransactionRepository : ITransactionRepository
 {
     private readonly List<Transaction> _transactions = new();
+    private readonly object _lock = new();
 
     public void Save(Transaction transaction)
     {
-        _transactions.Add(transaction);
+        lock (_lock)
+        {
+            _transactions.Add(transaction);
+        }
     }
 
     public IEnumerable<Transaction> GetByAccountNumberInRange(string accountNumber, DateTime fromDate, DateTime toDate)
     {
-        return _transactions
-            .Where(t => t.AccountNumber == accountNumber && t.Date >= fromDate && t.Date <= toDate)
-            .OrderByDescending(t => t.Date);
+        lock (_lock)
+        {
+            return _transactions
+                .Where(t => t.AccountNumber == accountNumber && t.Date >= fromDate && t.Date <= toDate)
+                .OrderByDescending(t => t.Date)
+                .ToList();
+        }
     }
 }
 
-public class SavingsAccountRepository
+public class SavingsAccountRepository : ISavingsAccountRepository
 {
-    private readonly Dictionary<string, SavingsAccount> _accounts = new();
+    private readonly ConcurrentDictionary<string, SavingsAccount> _accounts = new();
 
     public bool Exists(string accountNumber) => _accounts.ContainsKey(accountNumber);
 

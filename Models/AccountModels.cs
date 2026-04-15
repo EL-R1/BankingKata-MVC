@@ -2,6 +2,8 @@ namespace BankingKata_MVC.Models;
 
 public class BankAccount
 {
+    private readonly object _lock = new();
+    
     public string AccountNumber { get; private set; }
     public decimal Balance { get; private set; }
     public decimal OverdraftLimit { get; private set; }
@@ -20,21 +22,27 @@ public class BankAccount
 
     public void Deposit(decimal amount)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Deposit amount must be positive", nameof(amount));
-        
-        Balance += amount;
+        lock (_lock)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Deposit amount must be positive", nameof(amount));
+            
+            Balance += amount;
+        }
     }
 
     public void Withdraw(decimal amount)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Withdrawal amount must be positive", nameof(amount));
-        
-        if (amount > Balance + OverdraftLimit)
-            throw new InvalidOperationException("Insufficient funds for withdrawal");
-        
-        Balance -= amount;
+        lock (_lock)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Withdrawal amount must be positive", nameof(amount));
+            
+            if (amount > Balance + OverdraftLimit)
+                throw new InvalidOperationException("Insufficient funds for withdrawal");
+            
+            Balance -= amount;
+        }
     }
 
     public void SetOverdraftLimit(decimal limit)
@@ -79,6 +87,8 @@ public class Transaction
 
 public class SavingsAccount
 {
+    private readonly object _lock = new();
+    
     public string AccountNumber { get; private set; }
     public decimal Balance { get; private set; }
     public decimal DepositCeiling { get; private set; }
@@ -99,23 +109,29 @@ public class SavingsAccount
 
     public void Deposit(decimal amount)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Deposit amount must be positive", nameof(amount));
-        
-        if (Balance + amount > DepositCeiling)
-            throw new InvalidOperationException($"Deposit would exceed the ceiling of {DepositCeiling}");
-        
-        Balance += amount;
+        lock (_lock)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Deposit amount must be positive", nameof(amount));
+            
+            if (Balance + amount > DepositCeiling)
+                throw new InvalidOperationException($"Deposit would exceed the ceiling of {DepositCeiling}");
+            
+            Balance += amount;
+        }
     }
 
     public void Withdraw(decimal amount)
     {
-        if (amount <= 0)
-            throw new ArgumentException("Withdrawal amount must be positive", nameof(amount));
-        
-        if (amount > Balance)
-            throw new InvalidOperationException("Insufficient funds for withdrawal");
-        
-        Balance -= amount;
+        lock (_lock)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Withdrawal amount must be positive", nameof(amount));
+            
+            if (amount > Balance)
+                throw new InvalidOperationException("Insufficient funds for withdrawal");
+            
+            Balance -= amount;
+        }
     }
 }
