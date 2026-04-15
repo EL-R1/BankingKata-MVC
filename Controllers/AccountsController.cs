@@ -7,8 +7,7 @@ using BankingKata_MVC.ViewModels;
 namespace BankingKata_MVC.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-[Produces("application/json")]
+[Route("api/accounts")]
 public class AccountsController : Controller
 {
     private readonly IBankAccountRepository _repository;
@@ -29,7 +28,6 @@ public class AccountsController : Controller
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<AccountViewModel>), StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<AccountViewModel>> GetAll()
     {
         var accounts = _repository.GetAll().Select(a => _mapper.Map<AccountViewModel>(a));
@@ -37,8 +35,6 @@ public class AccountsController : Controller
     }
 
     [HttpGet("{accountNumber}")]
-    [ProducesResponseType(typeof(AccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<AccountViewModel> Get(string accountNumber)
     {
         var account = _repository.GetByAccountNumber(accountNumber);
@@ -52,9 +48,6 @@ public class AccountsController : Controller
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(AccountViewModel), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public ActionResult<AccountViewModel> Create([FromBody] CreateAccountViewModel model)
     {
         try
@@ -82,9 +75,6 @@ public class AccountsController : Controller
     }
 
     [HttpPost("{accountNumber}/deposit")]
-    [ProducesResponseType(typeof(AccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<AccountViewModel> Deposit(string accountNumber, [FromBody] TransactionViewModel model)
     {
         try
@@ -115,9 +105,6 @@ public class AccountsController : Controller
     }
 
     [HttpPost("{accountNumber}/withdraw")]
-    [ProducesResponseType(typeof(AccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<AccountViewModel> Withdraw(string accountNumber, [FromBody] TransactionViewModel model)
     {
         try
@@ -154,9 +141,6 @@ public class AccountsController : Controller
     }
 
     [HttpPost("{accountNumber}/overdraft")]
-    [ProducesResponseType(typeof(AccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<AccountViewModel> SetOverdraft(string accountNumber, [FromBody] OverdraftViewModel model)
     {
         try
@@ -185,8 +169,6 @@ public class AccountsController : Controller
     }
 
     [HttpGet("{accountNumber}/statement")]
-    [ProducesResponseType(typeof(StatementViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<StatementViewModel> GetStatement(string accountNumber, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
     {
         try

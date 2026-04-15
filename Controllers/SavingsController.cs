@@ -7,8 +7,7 @@ using BankingKata_MVC.ViewModels;
 namespace BankingKata_MVC.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-[Produces("application/json")]
+[Route("api/savings")]
 public class SavingsController : Controller
 {
     private readonly ISavingsAccountRepository _repository;
@@ -26,7 +25,6 @@ public class SavingsController : Controller
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<SavingsAccountViewModel>), StatusCodes.Status200OK)]
     public ActionResult<IEnumerable<SavingsAccountViewModel>> GetAll()
     {
         var accounts = _repository.GetAll().Select(a => _mapper.Map<SavingsAccountViewModel>(a));
@@ -34,8 +32,6 @@ public class SavingsController : Controller
     }
 
     [HttpGet("{accountNumber}")]
-    [ProducesResponseType(typeof(SavingsAccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<SavingsAccountViewModel> Get(string accountNumber)
     {
         var account = _repository.GetByAccountNumber(accountNumber);
@@ -49,9 +45,6 @@ public class SavingsController : Controller
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(SavingsAccountViewModel), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public ActionResult<SavingsAccountViewModel> Create([FromBody] CreateSavingsAccountViewModel model)
     {
         try
@@ -79,9 +72,6 @@ public class SavingsController : Controller
     }
 
     [HttpPost("{accountNumber}/deposit")]
-    [ProducesResponseType(typeof(SavingsAccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<SavingsAccountViewModel> Deposit(string accountNumber, [FromBody] TransactionViewModel model)
     {
         try
@@ -116,9 +106,6 @@ public class SavingsController : Controller
     }
 
     [HttpPost("{accountNumber}/withdraw")]
-    [ProducesResponseType(typeof(SavingsAccountViewModel), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public ActionResult<SavingsAccountViewModel> Withdraw(string accountNumber, [FromBody] TransactionViewModel model)
     {
         try
