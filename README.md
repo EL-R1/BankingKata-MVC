@@ -1,20 +1,28 @@
 # BankingKata-MVC
 
-API Bancaire en .NET 8 utilisant le pattern **MVC (Model-View-Controller)**.
+API Bancaire en .NET 8 utilisant le pattern **MVC (Model-View-Controller)** avec **AutoMapper** et **Injection de Dépendances**.
 
 ## Architecture
 
 ```
 BankingKata-MVC/
-├── Models/           # Modèles de domaine + Repositories
-│   ├── AccountModels.cs      # BankAccount, SavingsAccount, Transaction
-│   └── Repositories.cs       # In-memory repositories
-├── ViewModels/       # Modèles pour les réponses API
+├── Models/                    # Modèles de domaine
+│   ├── AccountModels.cs       # BankAccount, SavingsAccount, Transaction
+│   ├── Repositories.cs         # Implémentations des repositories
+│   └── Interfaces/            # Interfaces des repositories
+│       ├── IBankAccountRepository.cs
+│       ├── ISavingsAccountRepository.cs
+│       └── ITransactionRepository.cs
+├── ViewModels/               # Modèles pour les réponses API
 │   └── AccountViewModels.cs
-├── Controllers/      # Contrôleurs API
+├── Controllers/              # Contrôleurs API
 │   ├── AccountsController.cs
 │   └── SavingsController.cs
-└── Program.cs        # Point d'entrée
+├── Mapping/                  # Profils AutoMapper
+│   └── AccountMappingProfile.cs
+├── Tests/                    # Tests unitaires
+│   └── BankingKata-MVC.Tests/
+└── Program.cs                # Configuration DI + point d'entrée
 ```
 
 ## Pattern MVC
@@ -22,6 +30,16 @@ BankingKata-MVC/
 - **Model** : `Models/AccountModels.cs` - Logique métier (BankAccount, SavingsAccount, Transaction)
 - **View** : ViewModels + réponses JSON de l'API
 - **Controller** : `Controllers/AccountsController.cs`, `SavingsController.cs` - Gèrent les requêtes HTTP
+
+## Injection de Dépendances (Program.cs)
+
+```csharp
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<AccountMappingProfile>(), typeof(AccountMappingProfile).Assembly);
+
+builder.Services.AddScoped<IBankAccountRepository, BankAccountRepository>();
+builder.Services.AddScoped<ISavingsAccountRepository, SavingsAccountRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+```
 
 ## Schéma de l'Architecture
 
@@ -36,6 +54,10 @@ graph TD
         SC[SavingsController<br/>api/savings]
     end
 
+    subgraph Mapping
+        MP[AccountMappingProfile]
+    end
+
     subgraph ViewModels
         AV[AccountViewModel]
         SV[SavingsAccountViewModel]
@@ -47,27 +69,50 @@ graph TD
         BA[BankAccount]
         SA[SavingsAccount]
         T[Transaction]
+    end
+
+    subgraph Repositories
         BR[BankAccountRepository]
         SR[SavingsAccountRepository]
         TR[TransactionRepository]
     end
 
+    subgraph Interfaces
+        IBR[IBankAccountRepository]
+        ISR[ISavingsAccountRepository]
+        ITR[ITransactionRepository]
+    end
+
     HTTP --> AC
     HTTP --> SC
 
-    AC --> AV
-    SC --> SV
+    AC --> MP
+    SC --> MP
 
-    AV --> BA
-    SV --> SA
+    MP --> AV
+    MP --> SV
+    MP --> OV
+
+    AC --> BA
+    SC --> SA
     AC --> T
-    AC --> BR
-    AC --> TR
-    SC --> SR
+
+    AC --> IBR
+    SC --> ISR
+    AC --> ITR
+
+    IBR --> BR
+    ISR --> SR
+    ITR --> TR
+
+    BR -.->|implémente| IBR
+    SR -.->|implémente| ISR
+    TR -.->|implémente| ITR
 
     style HTTP fill:#e8f4f8,stroke:#333,color:#000000
     style AC fill:#d4e8f4,stroke:#333,color:#000000
     style SC fill:#d4e8f4,stroke:#333,color:#000000
+    style MP fill:#f4e4d4,stroke:#333,color:#000000
     style AV fill:#e4d4f4,stroke:#333,color:#000000
     style SV fill:#e4d4f4,stroke:#333,color:#000000
     style OV fill:#e4d4f4,stroke:#333,color:#000000
@@ -75,9 +120,9 @@ graph TD
     style BA fill:#e8f4d4,stroke:#333,color:#000000
     style SA fill:#e8f4d4,stroke:#333,color:#000000
     style T fill:#e8f4d4,stroke:#333,color:#000000
-    style BR fill:#d4f4e8,stroke:#333,color:#000000
-    style SR fill:#d4f4e8,stroke:#333,color:#000000
-    style TR fill:#d4f4e8,stroke:#333,color:#000000
+    style IBR fill:#d4f4e8,stroke:#333,color:#000000
+    style ISR fill:#d4f4e8,stroke:#333,color:#000000
+    style ITR fill:#d4f4e8,stroke:#333,color:#000000
 ```
 
 ## Flux de Données
@@ -86,6 +131,7 @@ graph TD
 sequenceDiagram
     participant Client
     participant Controller
+    participant Mapper as AutoMapper
     participant ViewModel
     participant Model
     participant Repository
@@ -95,8 +141,9 @@ sequenceDiagram
     Model->>Repository: Sauvegarde données
     Repository-->>Model: Données sauvegardées
     Model-->>Controller: Résultat
-    Controller->>ViewModel: Prépare réponse
-    ViewModel-->>Client: JSON Response
+    Controller->>Mapper: Map Model → ViewModel
+    Mapper-->>Controller: ViewModel
+    Controller-->>Client: JSON Response
 ```
 
 ## Endpoints
@@ -118,8 +165,8 @@ sequenceDiagram
 | GET | `/api/savings` | Liste tous les livrets |
 | GET | `/api/savings/{accountNumber}` | Détails d'un livret |
 | POST | `/api/savings` | Créer un livret |
-| POST | `/api/savings/{accountNumber}/deposit` | Déposer |
-| POST | `/api/savings/{accountNumber}/withdraw` | Retirer |
+| POST | `/api/savings/{accountNumber}/deposit` | Déposer (plafond appliqué) |
+| POST | `/api/savings/{accountNumber}/withdraw` | Retirer (fonds insuffisants si dépasse le solde) |
 
 ## Exemples de Requêtes
 
@@ -147,3 +194,16 @@ dotnet run
 
 L'API sera disponible sur `http://localhost:5000`
 Swagger disponible sur `http://localhost:5000/swagger`
+
+## Tests
+
+```bash
+cd BankingKata-MVC.Tests
+dotnet test
+```
+
+Les tests couvrent :
+- Logique métier des comptes (dépôt, retrait, découvert)
+- Logique métier des livrets épargne (plafond de dépôt)
+- Endpoints API (comptes et livrets)
+- Mappage AutoMapper
